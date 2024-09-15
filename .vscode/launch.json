@@ -1,0 +1,20 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "gdb",
+            "request": "attach",
+            "name": "Debug gdb",
+            "executable": "build/debug/nucleo_f207.elf",
+            "target": "127.0.0.1:2331",
+            "remote": true,
+            "cwd": "${workspaceRoot}",
+            "gdbpath": "arm-none-eabi-gdb",
+            "autorun": [
+                "file build/debug/nucleo_f207.elf",
+                "load",
+                "monitor reset"
+            ]
+        }
+    ]
+}

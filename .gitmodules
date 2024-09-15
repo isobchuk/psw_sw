@@ -1,0 +1,9 @@
+[submodule "components/cpp_register"]
+	path = components/cpp_register
+	url = git@github.com:isobchuk/cpp_register.git
+[submodule "components/embedded_printf_traces"]
+	path = components/embedded_printf_traces
+	url = git@github.com:isobchuk/embedded_printf_traces.git
+[submodule "components/meta_types"]
+	path = components/meta_types
+	url = git@github.com:isobchuk/meta_types.git

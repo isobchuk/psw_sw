@@ -29,7 +29,7 @@ OPTIMIZE		=-Os
 else
 CONFIGURATION 	= debug
 DEFINES 		+= $(DEFINES_DEBUG)
-OPTIMIZE		=-Os
+OPTIMIZE		=-O0
 endif
 
 # Paths for build result folder
@@ -50,7 +50,7 @@ APP_SOURCES_FOLDER	= sources
 APP_SUB_FOLDERS		=
 
 # Add your components folders here
-COMPONENTS 	:= meta_types cpp_register hal hal\stm32f2x7\reg hal\stm32f2x7\mcu embedded_printf_traces lcd flash
+COMPONENTS 	:= meta_types cpp_register hal hal\stm32f2x7\reg hal\stm32f2x7\mcu embedded_printf_traces lcd flash usb
 # Add third party folders here
 THIRD_PARTY := rtt
 # Add additional includes folder heremake clean

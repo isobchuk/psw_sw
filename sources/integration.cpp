@@ -20,12 +20,14 @@ CIntegration::CIntegration() {
     _Flash.GetStatus();
   }
 
+  _PinMap[const_v<EPinFunction::UsbEnable>].Write(const_v<false>);
+  _InterruptController[const_v<mcu::drivers::interrupt::Number::OTG_FS>].Enable();
+  usbDevice.Init();
+
   _Lcd2004.Init();
   _Lcd2004.Address(uint8_t(0U));
   _Lcd2004.Clear();
   _Lcd2004.String("Test string!");
-
-  // _PinMap[const_v<EPinFunction::UsbEnable>].Write(const_v<true>);
 
   debug.message(iso::format::string<PROJECT_NAME>);
   debug.message(iso::format::string<CONFIGURATION>);
@@ -36,13 +38,16 @@ CIntegration::CIntegration() {
 void CIntegration::operator()() {
   static Timeout timeoutLed;
 
-  _SystemTime.Start(timeoutLed);
+  usbDevice();
+
+  /* _SystemTime.Start(timeoutLed);
   if (_SystemTime.Check(timeoutLed, 1000U)) {
     debug.trace(iso::format::string<"Just a tick">);
   }
+  */
 }
 
 } // namespace integration
 
 void SysTick_Handler(void) { integration::CIntegration::InterruptSystemTick(); }
-// void TIM7_IRQHandler(void) { integration::CIntegration::InterruptTimerBasic(); }
+void OTG_FS_IRQHandler(void) { integration::CIntegration::InterruptUsb(); }

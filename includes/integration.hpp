@@ -1,5 +1,6 @@
 #pragma once
 
+#include "IntegrationUsb.hpp"
 #include "lcd.hpp"
 #include "log.hpp"
 #include "mcu_clock.hpp"
@@ -9,6 +10,7 @@
 #include "mcu_spim.hpp"
 #include "mcu_systick.hpp"
 #include "mcu_tim_base.hpp"
+#include "mcu_usb_otg_device.hpp"
 #include "mx25.hpp"
 #include "system_time.hpp"
 
@@ -187,13 +189,17 @@ class CIntegration final {
       iso::meta_type::const_v<mcu::drivers::spi::master::SSpiMasterConfiguration{mcu::drivers::spi::master::EPort::Spi1}>};
   static constexpr flash::mx25::CMX25 _Flash{_Spi, _PinMap[iso::meta_type::const_v<EPinFunction::FlashWP>]};
 
+  // USB
+  static constexpr auto integrationUsb = integration::usb::device::CUsbIntegration(_SystemTime);
+  static constexpr auto usbDevice = iso::usb::UsbDevice(integrationUsb);
+
 public:
   CIntegration();
   void operator()();
 
   // Interrupt
   inline static void InterruptSystemTick() { _SystemTick.InterruptHandler(); }
-  // inline static void InterruptTimerBasic() { _Timer.InterruptHandler(); }
+  inline static void InterruptUsb() { integrationUsb.InterruptHandler(); }
 };
 
 } // namespace integration

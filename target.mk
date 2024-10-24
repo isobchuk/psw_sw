@@ -29,7 +29,7 @@ OPTIMIZE		=-Os
 else
 CONFIGURATION 	= debug
 DEFINES 		+= $(DEFINES_DEBUG)
-OPTIMIZE		=-O0
+OPTIMIZE		=-Og
 endif
 
 # Paths for build result folder

@@ -190,7 +190,7 @@ class CIntegration final {
   static constexpr flash::mx25::CMX25 _Flash{_Spi, _PinMap[iso::meta_type::const_v<EPinFunction::FlashWP>]};
 
   // USB
-  static constexpr auto integrationUsb = integration::usb::device::CUsbIntegration(_SystemTime);
+  static constexpr auto integrationUsb = integration::usb::device::CUsbIntegration(_SystemTime, _Flash);
   static constexpr auto usbDevice = iso::usb::UsbDevice(integrationUsb);
 
 public:

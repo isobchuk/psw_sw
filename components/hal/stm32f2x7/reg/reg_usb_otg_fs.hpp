@@ -43,8 +43,13 @@ template <const cpp_register::RegisterAddress address> struct USB_OTG_FS_DEVICE_
   static constexpr cpp_register::Register<address + 0x108, cpp_register::AccessMode::RW, uint32_t, struct OTG_FS_DIEPINT, 4, 0x20> OTG_FS_DIEPINT{};
   static constexpr cpp_register::Register<address + 0x308, cpp_register::AccessMode::RW, uint32_t, struct OTG_FS_DOEPINT, 4, 0x20> OTG_FS_DOEPINT{};
 
+  static constexpr cpp_register::Register<address + 0x118, cpp_register::AccessMode::R, uint32_t, struct OTG_FS_DTXFSTS, 4, 0x20> OTG_FS_DTXFSTS{};
+
   static constexpr cpp_register::Register<address + 0x110, cpp_register::AccessMode::RW, uint32_t, struct OTG_FS_DIEPSIZ0> OTG_FS_DIEPSIZ0{};
+  static constexpr cpp_register::Register<address + 0x130, cpp_register::AccessMode::RW, uint32_t, struct OTG_FS_DIEPSIZ, 3, 0x20> OTG_FS_DIEPSIZ{};
+
   static constexpr cpp_register::Register<address + 0x310, cpp_register::AccessMode::RW, uint32_t, struct OTG_FS_DOEPSIZ0> OTG_FS_DOEPSIZ0{};
+  static constexpr cpp_register::Register<address + 0x330, cpp_register::AccessMode::RW, uint32_t, struct OTG_FS_DOEPSIZ, 3, 0x20> OTG_FS_DOEPSIZ{};
 };
 
 inline constexpr USB_OTG_FS_CORE_T<0x50000000> const *OTG_FS_CORE{};
@@ -300,7 +305,7 @@ struct USB_OTG_FS_DIEPCTL {
   static constexpr cpp_register::Field<decltype(OTG_FS_DEVICE->OTG_FS_DIEPCTL), (1UL << 28), cpp_register::AccessMode::W, 1> SD0PID{};
   static constexpr cpp_register::Field<decltype(OTG_FS_DEVICE->OTG_FS_DIEPCTL), (1UL << 29), cpp_register::AccessMode::W, 1> SODDFRM{};
   static constexpr cpp_register::Field<decltype(OTG_FS_DEVICE->OTG_FS_DIEPCTL), (1UL << 30), cpp_register::AccessMode::RS, 1> EPDIS{};
-  static constexpr cpp_register::Field<decltype(OTG_FS_DEVICE->OTG_FS_DIEPCTL), (1UL << 31), cpp_register::AccessMode::RS, 1> EPENA{};
+  static constexpr cpp_register::Field<decltype(OTG_FS_DEVICE->OTG_FS_DIEPCTL), (1UL << 31), cpp_register::AccessMode::RW, 1> EPENA{};
 };
 
 struct USB_OTG_FS_DOEPCTL0 {
@@ -317,7 +322,7 @@ struct USB_OTG_FS_DOEPCTL0 {
 };
 
 struct USB_OTG_FS_DOEPCTL {
-  static constexpr cpp_register::Field<decltype(OTG_FS_DEVICE->OTG_FS_DOEPCTL), (1UL << 0), cpp_register::AccessMode::R, 11> MPSIZ{};
+  static constexpr cpp_register::Field<decltype(OTG_FS_DEVICE->OTG_FS_DOEPCTL), (1UL << 0), cpp_register::AccessMode::RW, 11> MPSIZ{};
   static constexpr cpp_register::Field<decltype(OTG_FS_DEVICE->OTG_FS_DOEPCTL), (1UL << 15), cpp_register::AccessMode::RW, 1> USBAEP{};
   static constexpr cpp_register::Field<decltype(OTG_FS_DEVICE->OTG_FS_DOEPCTL), (1UL << 16), cpp_register::AccessMode::R, 1> EONUM{};
   static constexpr cpp_register::Field<decltype(OTG_FS_DEVICE->OTG_FS_DOEPCTL), (1UL << 17), cpp_register::AccessMode::R, 1> NAKSTS{};
@@ -329,7 +334,7 @@ struct USB_OTG_FS_DOEPCTL {
   static constexpr cpp_register::Field<decltype(OTG_FS_DEVICE->OTG_FS_DOEPCTL), (1UL << 28), cpp_register::AccessMode::W, 1> SD0PID{};
   static constexpr cpp_register::Field<decltype(OTG_FS_DEVICE->OTG_FS_DOEPCTL), (1UL << 29), cpp_register::AccessMode::W, 1> SODDFRM{};
   static constexpr cpp_register::Field<decltype(OTG_FS_DEVICE->OTG_FS_DOEPCTL), (1UL << 30), cpp_register::AccessMode::RS, 1> EPDIS{};
-  static constexpr cpp_register::Field<decltype(OTG_FS_DEVICE->OTG_FS_DOEPCTL), (1UL << 31), cpp_register::AccessMode::RS, 1> EPENA{};
+  static constexpr cpp_register::Field<decltype(OTG_FS_DEVICE->OTG_FS_DOEPCTL), (1UL << 31), cpp_register::AccessMode::RW, 1> EPENA{};
 };
 
 struct USB_OTG_FS_OTG_FS_DIEPINT {
@@ -346,9 +351,24 @@ struct USB_OTG_FS_OTG_FS_DIEPSIZ0 {
   static constexpr cpp_register::Field<decltype(OTG_FS_DEVICE->OTG_FS_DIEPSIZ0), (1UL << 19), cpp_register::AccessMode::RW, 2> PKTCNT{};
 };
 
+struct USB_OTG_FS_OTG_FS_DIEPSIZ {
+  static constexpr cpp_register::Field<decltype(OTG_FS_DEVICE->OTG_FS_DIEPSIZ), (1UL << 0), cpp_register::AccessMode::RW, 19> XFRSIZ{};
+  static constexpr cpp_register::Field<decltype(OTG_FS_DEVICE->OTG_FS_DIEPSIZ), (1UL << 19), cpp_register::AccessMode::RW, 10> PKTCNT{};
+};
+
 struct USB_OTG_FS_OTG_FS_DOEPSIZ0 {
   static constexpr cpp_register::Field<decltype(OTG_FS_DEVICE->OTG_FS_DOEPSIZ0), (1UL << 0), cpp_register::AccessMode::RW, 7> XFRSIZ{};
   static constexpr cpp_register::Field<decltype(OTG_FS_DEVICE->OTG_FS_DOEPSIZ0), (1UL << 19), cpp_register::AccessMode::RW, 1> PKTCNT{};
   static constexpr cpp_register::Field<decltype(OTG_FS_DEVICE->OTG_FS_DOEPSIZ0), (1UL << 29), cpp_register::AccessMode::RW, 2> STUPCNT{};
+};
+
+struct USB_OTG_FS_OTG_FS_DOEPSIZ {
+  static constexpr cpp_register::Field<decltype(OTG_FS_DEVICE->OTG_FS_DOEPSIZ), (1UL << 0), cpp_register::AccessMode::RW, 19> XFRSIZ{};
+  static constexpr cpp_register::Field<decltype(OTG_FS_DEVICE->OTG_FS_DOEPSIZ), (1UL << 19), cpp_register::AccessMode::RW, 10> PKTCNT{};
+  static constexpr cpp_register::Field<decltype(OTG_FS_DEVICE->OTG_FS_DOEPSIZ), (1UL << 29), cpp_register::AccessMode::RW, 2> RXDPID{};
+};
+
+struct USB_OTG_FS_OTG_FS_DTXFSTS {
+  static constexpr cpp_register::Field<decltype(OTG_FS_DEVICE->OTG_FS_DTXFSTS), (1UL << 0), cpp_register::AccessMode::R, 16> INEPTFSAV{};
 };
 } // namespace stm32f217::registers::usb_otg_fs

@@ -25,10 +25,9 @@ template <iso::usb::endpoint::c_endpoint Buffer, const unsigned num, const EEndp
   static constexpr auto _Type = type;
 
   static constexpr uint32_t _AddressRxFifo = 0x50001000UL;
-  static constexpr uint32_t _AddressTxFifo[] = {0x50001200UL, 0x50001400UL, 0x50001600UL, 0x50001800UL};
+  static constexpr uint32_t _AddressTxFifo[] = {0x50001200UL, 0x50002000UL, 0x50001600UL, 0x50001800UL};
 
   volatile Buffer _EndpointReceiveBuffer;
-  volatile bool isRxlvl;
 
 public:
   inline CEndpoint() : _EndpointReceiveBuffer(num) {}
@@ -40,15 +39,13 @@ public:
     // Special endpoint 0
     if constexpr (0 == _Number) {
       // 1. Status NAK for OUT endpoint
-      // OTG_FS_DEVICE->OTG_FS_DOEPCTL0 |= USB_OTG_FS_DOEPCTL0::SNAK;
-      /*OTG_FS_DEVICE->OTG_FS_DOEPCTL[reg_v<0U>] |= USB_OTG_FS_DOEPCTL::SNAK;
+      OTG_FS_DEVICE->OTG_FS_DOEPCTL0 |= USB_OTG_FS_DOEPCTL0::SNAK;
+      OTG_FS_DEVICE->OTG_FS_DOEPCTL[reg_v<0U>] |= USB_OTG_FS_DOEPCTL::SNAK;
       OTG_FS_DEVICE->OTG_FS_DOEPCTL[reg_v<1U>] |= USB_OTG_FS_DOEPCTL::SNAK;
-      OTG_FS_DEVICE->OTG_FS_DOEPCTL[reg_v<2U>] |= USB_OTG_FS_DOEPCTL::SNAK;*/
-
-      // Unmask Interrupts for IN and OUT EP0
-      OTG_FS_DEVICE->OTG_FS_DAINTMSK |= USB_OTG_FS_DAINTMSK::OEPM(reg_v<0b1UL>) | USB_OTG_FS_DAINTMSK::IEPM(reg_v<0b1UL>);
+      OTG_FS_DEVICE->OTG_FS_DOEPCTL[reg_v<2U>] |= USB_OTG_FS_DOEPCTL::SNAK;
 
       // 2. Unmask Transfer complete interrupt
+      OTG_FS_DEVICE->OTG_FS_DAINTMSK |= USB_OTG_FS_DAINTMSK::OEPM(reg_v<0b11UL>) | USB_OTG_FS_DAINTMSK::IEPM(reg_v<0b11UL>);
       OTG_FS_DEVICE->OTG_FS_DOEPMSK |= USB_OTG_FS_OTG_FS_DOEPMSK::STUPM | USB_OTG_FS_OTG_FS_DOEPMSK::XFRCM;
       OTG_FS_DEVICE->OTG_FS_DIEPMSK |= USB_OTG_FS_OTG_FS_DIEPMSK::XFRCM;
 
@@ -56,15 +53,21 @@ public:
       OTG_FS_CORE->FS_GRXFSIZ = USB_OTG_FS_FS_GRXFSIZ::RXFD(reg_v<0x80UL>);
       OTG_FS_CORE->FS_GNPTXFSIZ_Device =
           USB_OTG_FS_FS_GNPTXFSIZ_Device::TX0FSA(reg_v<0x200UL>) | USB_OTG_FS_FS_GNPTXFSIZ_Device::TX0FD(reg_v<0x80UL>);
-      OTG_FS_CORE->FS_DIEPTXF[reg_v<0UL>] = USB_OTG_FS_FS_DIEPTXF1::INEPTXFD(reg_v<0x80UL>) | USB_OTG_FS_FS_DIEPTXF1::INEPTXSA(reg_v<0x100UL>);
-      OTG_FS_CORE->FS_DIEPTXF[reg_v<1UL>] = USB_OTG_FS_FS_DIEPTXF1::INEPTXFD(reg_v<0x80UL>) | USB_OTG_FS_FS_DIEPTXF1::INEPTXSA(reg_v<0x180UL>);
-      OTG_FS_CORE->FS_DIEPTXF[reg_v<2UL>] = USB_OTG_FS_FS_DIEPTXF1::INEPTXFD(reg_v<0x80UL>) | USB_OTG_FS_FS_DIEPTXF1::INEPTXSA(reg_v<0x200UL>);
-      // OTG_FS_CORE->FS_GRSTCTL |= USB_OTG_FS_FS_GRSTCTL::RXFFLSH | USB_OTG_FS_FS_GRSTCTL::TXFFLSH;
+      OTG_FS_CORE->FS_DIEPTXF[reg_v<0UL>] = USB_OTG_FS_FS_DIEPTXF1::INEPTXFD(reg_v<0x80UL>) | USB_OTG_FS_FS_DIEPTXF1::INEPTXSA(reg_v<0x000UL>);
+      OTG_FS_CORE->FS_DIEPTXF[reg_v<1UL>] = USB_OTG_FS_FS_DIEPTXF1::INEPTXFD(reg_v<0x80UL>) | USB_OTG_FS_FS_DIEPTXF1::INEPTXSA(reg_v<0x600UL>);
+      OTG_FS_CORE->FS_DIEPTXF[reg_v<2UL>] = USB_OTG_FS_FS_DIEPTXF1::INEPTXFD(reg_v<0x80UL>) | USB_OTG_FS_FS_DIEPTXF1::INEPTXSA(reg_v<0x800UL>);
 
       // 4.
       OTG_FS_DEVICE->OTG_FS_DOEPSIZ0 |=
-          USB_OTG_FS_OTG_FS_DOEPSIZ0::STUPCNT(reg_v<3UL>) | USB_OTG_FS_OTG_FS_DOEPSIZ0::PKTCNT | USB_OTG_FS_OTG_FS_DOEPSIZ0::XFRSIZ(reg_v<64UL>);
+          USB_OTG_FS_OTG_FS_DOEPSIZ0::STUPCNT(reg_v<1UL>) | USB_OTG_FS_OTG_FS_DOEPSIZ0::PKTCNT | USB_OTG_FS_OTG_FS_DOEPSIZ0::XFRSIZ(reg_v<64UL>);
       OTG_FS_DEVICE->OTG_FS_DOEPCTL0 |= USB_OTG_FS_DOEPCTL0::CNAK | USB_OTG_FS_DOEPCTL0::USBAEP | USB_OTG_FS_DOEPCTL0::EPENA;
+    } else {
+      constexpr auto EP = reg_v<_Number - 1>;
+      OTG_FS_DEVICE->OTG_FS_DOEPSIZ[EP] |= USB_OTG_FS_OTG_FS_DOEPSIZ::PKTCNT(reg_v<1UL>) | USB_OTG_FS_OTG_FS_DOEPSIZ::XFRSIZ(reg_v<64UL>);
+      OTG_FS_DEVICE->OTG_FS_DOEPCTL[EP] |= USB_OTG_FS_DOEPCTL::CNAK | USB_OTG_FS_DOEPCTL::SD0PID | USB_OTG_FS_DOEPCTL::EPTYP(reg_v<_Type>) |
+                                           USB_OTG_FS_DOEPCTL::USBAEP | USB_OTG_FS_DOEPCTL::EPENA | USB_OTG_FS_DOEPCTL::MPSIZ(reg_v<64UL>);
+      OTG_FS_DEVICE->OTG_FS_DIEPCTL[EP] |= USB_OTG_FS_DIEPCTL::EPTYP(reg_v<_Type>) | USB_OTG_FS_DIEPCTL::SD0PID |
+                                           USB_OTG_FS_DIEPCTL::TXFNUM(reg_v<_Number>) | USB_OTG_FS_DIEPCTL::MPSIZ(reg_v<64UL>);
     }
   }
 
@@ -86,6 +89,10 @@ public:
     const auto endpointNumber = (OTG_FS_CORE->FS_GRXSTSR_Device & USB_OTG_FS_FS_GRXSTSR_Device::EPNUM(reg_v<0b1111UL>));
     const auto length = ((OTG_FS_CORE->FS_GRXSTSR_Device & USB_OTG_FS_FS_GRXSTSR_Device::BCNT(reg_v<0b111'1111'1111UL>)) >> 4);
 
+    if (_Number != endpointNumber) {
+      return false;
+    }
+
     switch (status) {
     case EStatus::GlobalOutNak:
       break;
@@ -96,7 +103,9 @@ public:
       for (unsigned i = 0; i < (_EndpointReceiveBuffer.sLength + 3) / 4; i++) {
         reinterpret_cast<volatile uint32_t *>(_EndpointReceiveBuffer.aBuffer)[i] = data[0];
       }
-    } break;
+    }
+
+    break;
     case EStatus::OutTransferCompleted:
       (void)*(OTG_FS_CORE->FS_GRXSTSR_POP);
       break;
@@ -113,6 +122,7 @@ public:
       }
     } break;
     default:
+      (void)*(OTG_FS_CORE->FS_GRXSTSR_POP);
       break;
     };
     return true;
@@ -122,10 +132,19 @@ public:
     using namespace cpp_register;
     using namespace stm32f217::registers::usb_otg_fs;
 
+    // Check available space in the tx buffer
+    while ((OTG_FS_DEVICE->OTG_FS_DTXFSTS[reg_v<_Number>] & USB_OTG_FS_OTG_FS_DTXFSTS::INEPTFSAV(reg_v<0xFFFFUL>)) < 128U) {
+    }
+
     if constexpr (0 == _Number) {
       OTG_FS_DEVICE->OTG_FS_DIEPCTL0 &= USB_OTG_FS_DIEPCTL0::EPENA;
       OTG_FS_DEVICE->OTG_FS_DIEPSIZ0 = (uint32_t(size / sizeof(_EndpointReceiveBuffer.aBuffer) + 1) << 19) | size;
       OTG_FS_DEVICE->OTG_FS_DIEPCTL0 |= USB_OTG_FS_DIEPCTL0::CNAK | USB_OTG_FS_DIEPCTL0::USBAEP | USB_OTG_FS_DIEPCTL0::EPENA;
+    } else {
+      constexpr auto EP = reg_v<_Number - 1>;
+      OTG_FS_DEVICE->OTG_FS_DIEPCTL[EP] &= USB_OTG_FS_DIEPCTL::EPENA;
+      OTG_FS_DEVICE->OTG_FS_DIEPSIZ[EP] = (uint32_t((size - 1) / sizeof(_EndpointReceiveBuffer.aBuffer) + 1) << 19) | size;
+      OTG_FS_DEVICE->OTG_FS_DIEPCTL[EP] |= USB_OTG_FS_DIEPCTL::CNAK | USB_OTG_FS_DIEPCTL::USBAEP | USB_OTG_FS_DIEPCTL::EPENA;
     }
 
     write++;
@@ -144,8 +163,13 @@ public:
 
     if constexpr (0 == _Number) {
       OTG_FS_DEVICE->OTG_FS_DIEPCTL0 &= USB_OTG_FS_DIEPCTL0::EPENA;
-      OTG_FS_DEVICE->OTG_FS_DIEPSIZ0 = (1UL << 19) | 0;
+      OTG_FS_DEVICE->OTG_FS_DIEPSIZ0 = (1UL << 19) | 0UL;
       OTG_FS_DEVICE->OTG_FS_DIEPCTL0 |= USB_OTG_FS_DIEPCTL0::USBAEP | USB_OTG_FS_DIEPCTL0::CNAK | USB_OTG_FS_DIEPCTL0::EPENA;
+    } else {
+      constexpr auto EP = reg_v<_Number - 1>;
+      OTG_FS_DEVICE->OTG_FS_DIEPCTL[EP] &= USB_OTG_FS_DIEPCTL::EPENA;
+      OTG_FS_DEVICE->OTG_FS_DIEPSIZ[EP] = (1UL << 19) | 0UL;
+      OTG_FS_DEVICE->OTG_FS_DIEPCTL[EP] |= USB_OTG_FS_DIEPCTL::CNAK | USB_OTG_FS_DIEPCTL::USBAEP | USB_OTG_FS_DIEPCTL::EPENA;
     }
 
     writeEmpty++;
@@ -166,9 +190,13 @@ public:
     // Special endpoint 0
     if constexpr (0 == _Number) {
       OTG_FS_DEVICE->OTG_FS_DOEPCTL0 &= USB_OTG_FS_DOEPCTL0::EPENA;
-      OTG_FS_DEVICE->OTG_FS_DOEPSIZ0 |=
-          USB_OTG_FS_OTG_FS_DOEPSIZ0::STUPCNT(reg_v<3UL>) | USB_OTG_FS_OTG_FS_DOEPSIZ0::PKTCNT | USB_OTG_FS_OTG_FS_DOEPSIZ0::XFRSIZ(reg_v<64UL>);
+      OTG_FS_DEVICE->OTG_FS_DOEPSIZ0 |= USB_OTG_FS_OTG_FS_DOEPSIZ0::PKTCNT | USB_OTG_FS_OTG_FS_DOEPSIZ0::XFRSIZ(reg_v<64UL>);
       OTG_FS_DEVICE->OTG_FS_DOEPCTL0 |= USB_OTG_FS_DOEPCTL0::USBAEP | USB_OTG_FS_DOEPCTL0::CNAK | USB_OTG_FS_DOEPCTL0::EPENA;
+    } else {
+      constexpr auto EP = reg_v<_Number - 1>;
+      OTG_FS_DEVICE->OTG_FS_DOEPCTL[EP] &= USB_OTG_FS_DOEPCTL::EPENA;
+      OTG_FS_DEVICE->OTG_FS_DOEPSIZ[EP] |= USB_OTG_FS_OTG_FS_DOEPSIZ::PKTCNT(reg_v<1UL>) | USB_OTG_FS_OTG_FS_DOEPSIZ::XFRSIZ(reg_v<64UL>);
+      OTG_FS_DEVICE->OTG_FS_DOEPCTL[EP] |= USB_OTG_FS_DOEPCTL::USBAEP | USB_OTG_FS_DOEPCTL::CNAK | USB_OTG_FS_DOEPCTL::EPENA;
     }
   }
 };
@@ -224,14 +252,19 @@ private:
 
     OTG_FS_CORE->FS_GINTSTS |= USB_OTG_FS_FS_GINTSTS::OEPINT;
 
-    EndpointControl.CorrectTransfer();
+    // EndpointControl.CorrectTransfer();
   }
 
   static void RxLvl() {
     using namespace cpp_register;
     using namespace stm32f217::registers::usb_otg_fs;
 
-    EndpointControl.CorrectTransfer();
+    const bool result = EndpointControl.CorrectTransfer();
+
+    // TO DO - rewrite, not correct for 2 and 3 ep
+    if (!result) {
+      (endpoints.CorrectTransfer(), ...);
+    }
   }
 
   static constexpr SInterruptTable sInterruptHandler[] = {{EInterruptReason::Reset, Reset},
@@ -283,21 +316,23 @@ public:
     if (OTG_FS_DEVICE->OTG_FS_DIEPINT & USB_OTG_FS_OTG_FS_DIEPINT::XFRC) {
       OTG_FS_DEVICE->OTG_FS_DIEPINT |= USB_OTG_FS_OTG_FS_DIEPINT::XFRC;
       successfullySent = successfullySent + 1UL;
-      zeroPack = false;
     }
 
     if (OTG_FS_DEVICE->OTG_FS_DOEPINT & USB_OTG_FS_OTG_FS_DOEPINT::XFRC) {
       OTG_FS_DEVICE->OTG_FS_DOEPINT |= USB_OTG_FS_OTG_FS_DOEPINT::XFRC;
+    }
+
+    if (OTG_FS_DEVICE->OTG_FS_DIEPINT[reg_v<1UL>] & USB_OTG_FS_OTG_FS_DIEPINT::XFRC) {
+      OTG_FS_DEVICE->OTG_FS_DIEPINT[reg_v<1UL>] |= USB_OTG_FS_OTG_FS_DIEPINT::XFRC;
+      successfullySent = successfullySent + 1UL;
     }
   }
 
   inline auto ControlEndpoint() const -> decltype(EndpointControl) & { return EndpointControl; }
   inline void Address(const uint8_t addr) const {
     using namespace stm32f217::registers::usb_otg_fs;
-    const uint32_t adddress = addr << 4;
-    /* while (zeroPack) {
-     }*/
-    *(reinterpret_cast<uint32_t *>(0x5000'0800UL)) |= adddress;
+    const uint32_t address = uint32_t(addr) << 4;
+    *(reinterpret_cast<uint32_t *>(0x5000'0800UL)) |= address;
   }
 };
 

@@ -82,16 +82,17 @@ public:
     using namespace stm32f217::drivers::dma;
     using namespace iso::meta_type;
 
-    _ChipSelect.Write(const_v<false>);
+    volatile uint8_t bufferRx[sizeof(buffer._Tx)] = {};
 
-    uint8_t bufferRx[sizeof(buffer._Tx)] = {};
+    _ChipSelect.Write(const_v<false>);
 
     _DmaRx.Address(const_v<EAddressRegion::Memory0>, bufferRx);
     _DmaRx.Number(const_v<uint32_t(sizeof(bufferRx))>);
-    _DmaRx.Enable();
 
     _DmaTx.Address(const_v<EAddressRegion::Memory0>, buffer._Tx);
     _DmaTx.Number(const_v<uint32_t(sizeof(buffer._Tx))>);
+
+    _DmaRx.Enable();
     _DmaTx.Enable();
 
     while (!_DmaRx.InterruptStatus(const_v<EInterruptReason::TransferComplete>)) {

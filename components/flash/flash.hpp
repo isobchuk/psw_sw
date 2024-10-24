@@ -18,6 +18,8 @@ concept flash_memory_spi = requires(const T flash_spi, uint8_t (&arr)[16]) {
   { flash_spi.PageProgram(iso::meta_type::const_v<size_t{}>, arr) } -> std::same_as<bool>;
   { flash_spi.PageRead(size_t{}, arr) } -> std::same_as<bool>;
   { flash_spi.PageRead(iso::meta_type::const_v<size_t{}>, arr) } -> std::same_as<bool>;
+  { flash_spi.SizePage() } -> std::convertible_to<std::size_t>;
+  { flash_spi.SizeSector() } -> std::convertible_to<std::size_t>;
 };
 
 } // namespace hardware::flash

@@ -18,12 +18,12 @@ enum class ERequest : Type::Byte {
   GET_CONFIGURATION,
   SetConfiguration,
   GetInterface,
-  SET_INTERFACE,
+  SetInterface,
   SYNCH_FRAME,
   SET_LINE_CODING = 0x20U,
   GET_LINE_CODING,
   SET_CONTROL_LINE_STATE,
-  GET_MAX_LUN = 0xFEU,
+  GetMaxLun = 0xFEU,
   BULK_ONLY_MSD_RESET,
 };
 
@@ -103,9 +103,10 @@ template <typename TIntegration> class CHandler final {
 
   /*!<-----Standart request functions------->!*/
   bool SetAddress(const SRequest &request) {
-    _Integration._Hardware.ControlEndpoint().WriteEmpty();
-    _Integration._Timer.Delay(10);
+
+    _Integration._Timer.Delay(2);
     _Integration._Hardware.Address(static_cast<Type::Byte>(request.wValue));
+    _Integration._Hardware.ControlEndpoint().WriteEmpty();
     return true;
   }
   bool GetDescriptor(const SRequest &request) {
@@ -155,9 +156,11 @@ template <typename TIntegration> class CHandler final {
       }
       break;
 
-    case EDescriptorType::Qualifier:
-      _Integration._Hardware.ControlEndpoint().Write(_Integration.QualifierDescriptor());
-      break;
+    case EDescriptorType::Qualifier: {
+
+      constexpr Type::Byte _DescriptorQualifier[] = {0x0A, 0x06, 0x00, 0x02, 0x00, 0x00, 0x00, 0x40, 0x00, 0x00, 0x00, 0x00};
+      _Integration._Hardware.ControlEndpoint().Write(_DescriptorQualifier, 10);
+    } break;
 
     case EDescriptorType::ReportDescriptor:
       _Integration._Hardware.ControlEndpoint().Write(_Integration.CustomHid());
@@ -177,6 +180,12 @@ template <typename TIntegration> class CHandler final {
   }
 
   bool GetInterface(const SRequest &) { return _Integration._Hardware.ControlEndpoint().WriteEmpty(); }
+  bool SetInterface(const SRequest &) { return _Integration._Hardware.ControlEndpoint().WriteEmpty(); }
+
+  bool GetMaxLun(const SRequest &) {
+    constexpr Type::Byte lun[] = {0x0, 0x0, 0x0, 0x0};
+    return _Integration._Hardware.ControlEndpoint().Write(lun, 1);
+  }
 
   struct SStandardRequestTable {
     ERequest request;
@@ -186,7 +195,9 @@ template <typename TIntegration> class CHandler final {
   static constexpr SStandardRequestTable _TableStandardRequests[] = {{ERequest::SetAddress, &CHandler::SetAddress},
                                                                      {ERequest::GetDescriptor, &CHandler::GetDescriptor},
                                                                      {ERequest::SetConfiguration, &CHandler::SetConfiguration},
-                                                                     {ERequest::GetInterface, &CHandler::GetInterface}};
+                                                                     {ERequest::GetInterface, &CHandler::GetInterface},
+                                                                     {ERequest::SetInterface, &CHandler::SetInterface},
+                                                                     {ERequest::GetMaxLun, &CHandler::GetMaxLun}};
 
 public:
   inline constexpr CHandler(const TIntegration &integ) : _Integration(integ) {}
@@ -197,8 +208,6 @@ public:
         return (this->*handler.Handler)(request);
       }
     }
-
-    //_Integration._Hardware.ControlEndpoint().WriteEmpty();
     noHandler++;
     return true;
   }

@@ -13,6 +13,14 @@ concept descriptor = requires(D d) {
 
 enum class EDescriptorRepresentation { Descriptor, Buffer };
 
+class CDescriptorDummyBuffer {
+
+public:
+  const uint8_t _Descriptor[sizeof(std::size_t)];
+  consteval CDescriptorDummyBuffer() : _Descriptor() {}
+  static consteval unsigned size() { return sizeof(_Descriptor); }
+};
+
 template <const EDescriptorRepresentation representation> class CDescriptorDevice {
   consteval CDescriptorDevice() = default;
 };
@@ -93,8 +101,8 @@ public:
                     static_cast<std::underlying_type_t<EDescriptorType>>(EDescriptorType::Endpoint),
                     static_cast<Type::Byte>(addr | static_cast<std::underlying_type_t<endpoint::EDirection>>(dir)),
                     static_cast<std::underlying_type_t<endpoint::EType>>(type),
-                    architecture::cast(Type::Word{8U}) & 0xFF,
-                    architecture::cast(Type::Word{8U}) >> 8,
+                    architecture::cast(Type::Word{64U}) & 0xFF,
+                    architecture::cast(Type::Word{64U}) >> 8,
                     pollInterval} {}
 
   static consteval unsigned size() { return sizeof(_Descriptor); }
@@ -237,92 +245,5 @@ using CDescriptorConfigurationBuffer = CDescriptorConfiguration<EDescriptorRepre
 template <const unsigned N> using CDescriptorStringBuffer = CDescriptorString<EDescriptorRepresentation::Buffer, N>;
 
 using CDescriptorCustomHidBuffer = CDescriptorCustomHid<EDescriptorRepresentation::Buffer>;
-
-#if 0
-inline constexpr auto DESCRIPTOR_DEVICE_REQUEST_SIZE = 18U;
-
-
-
-class CDescriptorDevice {
-
-public:
-  // TODO
-  // inline static constexpr void Descriptor(const Type::Byte (&buff)[DESCRIPTOR_DEVICE_REQUEST_SIZE], SDescriptorDevice &descriptor) {}
-
-  inline static constexpr void Buffer(const SDescriptorDevice &descriptor, Type::Byte (&buff)[DESCRIPTOR_DEVICE_REQUEST_SIZE]) {
-    buff[0] = descriptor.bLength;
-    buff[1] = static_cast<std::underlying_type_t<decltype(descriptor.bDescriptorType)>>(descriptor.bDescriptorType);
-    buff[2] = static_cast<Type::Byte>(static_cast<std::underlying_type_t<decltype(descriptor.bcdUSB)>>(descriptor.bcdUSB) & 0xFFU);
-    buff[3] = static_cast<Type::Byte>(static_cast<std::underlying_type_t<decltype(descriptor.bcdUSB)>>(descriptor.bcdUSB) >> 8);
-    buff[4] = static_cast<std::underlying_type_t<decltype(descriptor.bDeviceClass)>>(descriptor.bDeviceClass);
-    buff[5] = descriptor.bDeviceSubClass;
-    buff[6] = descriptor.bDeviceProtocol;
-    buff[7] = descriptor.bMaxPacketSize;
-    buff[8] = static_cast<Type::Byte>(descriptor.idVendor) >> 8;
-    buff[9] = static_cast<Type::Byte>(descriptor.idVendor) & 0xFFU;
-    buff[10] = static_cast<Type::Byte>(descriptor.idProduct) >> 8;
-    buff[11] = static_cast<Type::Byte>(descriptor.idProduct) & 0xFFU;
-    buff[12] = static_cast<Type::Byte>(descriptor.bcdDevice) >> 8;
-    buff[13] = static_cast<Type::Byte>(descriptor.bcdDevice) & 0xFFU;
-    buff[14] = descriptor.iManufacturer;
-    buff[15] = descriptor.iProduct;
-    buff[16] = descriptor.iSerialNumber;
-    buff[17] = descriptor.bNumConfigurations;
-  }
-};
-
-union UDeviceDescriptor {
-
-  struct SDeviceDescriptor {
-    const Type::Byte bLength;
-    const EDescriptorType bDescriptorType;
-    const EBcdUsb bcdUSB;
-    const EDeviceClass bDeviceClass;
-    const Type::Byte bDeviceSubClass;
-    const Type::Byte bDeviceProtocol;
-    const Type::Byte bMaxPacketSize;
-    const Type::Word idVendor;
-    const Type::Word idProduct;
-    const Type::Word bcdDevice;
-    const Type::Byte iManufacturer;
-    const Type::Byte iProduct;
-    const Type::Byte iSerialNumber;
-    const Type::Byte bNumConfigurations;
-
-    consteval SDeviceDescriptor(const EBcdUsb usbVersion, const EDeviceClass deviceClass, const Type::Word vendorId, const Type::Word productId,
-                                const Type::Byte configNum = 1U)
-        : bLength(sizeof(SDeviceDescriptor)), bDescriptorType(EDescriptorType::Device), bcdUSB(usbVersion), bDeviceClass(deviceClass),
-          bDeviceSubClass(0x00), bDeviceProtocol(0x00), bMaxPacketSize(64), idVendor(architecture::cast(vendorId)),
-          idProduct(architecture::cast(productId)), bcdDevice(0x00), iManufacturer(0x01), iProduct(0x02), iSerialNumber(0x03),
-          bNumConfigurations(configNum) {}
-  };
-
-  const SDeviceDescriptor dDeviceDescriptor;
-  const Type::Byte aBuffer[sizeof(dDeviceDescriptor)];
-
-  consteval UDeviceDescriptor(const EBcdUsb usbVersion, const EDeviceClass deviceClass, const Type::Word vendorId, const Type::Word productId,
-                              const Type::Byte configNum)
-      : dDeviceDescriptor(usbVersion, deviceClass, vendorId, productId, configNum) {}
-};
-
-using DeviceDescriptor = UDeviceDescriptor;
-static_assert(18 == sizeof(DeviceDescriptor), "The device descriptor size should be 18!");
-
-union UConfigurationDescriptor {
-  struct SConfigurationDescriptor {
-    const Type::Byte bLength;
-    const EDescriptorType bDescriptorType;
-    const Type::Word wTotalLength;
-    const Type::Byte bNumInterfaces;
-    const Type::Byte bConfigurationValue;
-    const Type::Byte iConfiguration;
-    const Type::BitMap<Type::Byte> bmAttributes;
-    const Type::Byte bMaxPower;
-  };
-
-  const SConfigurationDescriptor dDeviceDescriptor;
-  const Type::Byte aBuffer[sizeof(dDeviceDescriptor)];
-};
-#endif
 
 } // namespace iso::usb::descriptor

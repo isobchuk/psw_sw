@@ -76,6 +76,7 @@ public:
 
   inline uint8_t GetStatus() const {
     hal::spim::STransmitReceiveBuffer message({static_cast<std::underlying_type_t<ECommands>>(ECommands::GetStatus)}, iso::meta_type::const_v<1U>);
+    message._Rx[0] = 0;
     if (_Spi.TransmitReceive(message)) {
       return message._Rx[0];
     }
@@ -220,5 +221,8 @@ public:
     }
     return true;
   }
+
+  static consteval auto SizePage() { return PAGE_SIZE; }
+  static consteval auto SizeSector() { return SECTOR_SIZE; }
 };
 } // namespace flash::mx25

@@ -222,6 +222,23 @@ public:
     }
   }
 
+  template <iso::meta_type::const_value_of_type<EAddressRegion> AddressRegion>
+  inline void Address(const AddressRegion, const volatile void *addressValue) const {
+    using namespace cpp_register;
+    using namespace stm32f217::registers::dma;
+    if constexpr (EAddressRegion::Memory0 == AddressRegion::value) {
+      DMA->SM0AR[STREAM] = addressValue;
+    } else if (EAddressRegion::Memory1 == AddressRegion::value) {
+      DMA->SM1AR[STREAM] = addressValue;
+    } else if (EAddressRegion::Peripheral == AddressRegion::value) {
+      DMA->SPAR[STREAM] = addressValue;
+    } else {
+      static_assert(((EAddressRegion::Memory0 == AddressRegion::value) || (EAddressRegion::Memory1 == AddressRegion::value) ||
+                     (EAddressRegion::Peripheral == AddressRegion::value)),
+                    "Driver DMA: Not allowable address region!");
+    }
+  }
+
   template <iso::meta_type::const_value_of_type<uint32_t> NumberValue> inline void Number(const NumberValue) const {
     using namespace cpp_register;
     using namespace stm32f217::registers::dma;

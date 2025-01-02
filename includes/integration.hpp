@@ -1,10 +1,12 @@
 #pragma once
 
+#include "FatFSIntegration.hpp"
 #include "IntegrationUsb.hpp"
 #include "lcd.hpp"
 #include "log.hpp"
 #include "mcu_clock.hpp"
 #include "mcu_dma.hpp"
+#include "mcu_external_interrupts.hpp"
 #include "mcu_gpio.hpp"
 #include "mcu_interrupts.hpp"
 #include "mcu_spim.hpp"
@@ -23,6 +25,8 @@ namespace integration {
 namespace mcu = stm32f217;
 
 class CIntegration final {
+
+  enum class ERotation : uint32_t { None, Clockwise, Counterclockwise, Enter };
 
   /*!<-------------------------GPIO PIN MAP--------------------------->!*/
   enum class EPinFunction : unsigned {
@@ -78,9 +82,9 @@ class CIntegration final {
       {EPinFunction::UsbDP,     mcu::drivers::gpio::Port::PA,   mcu::drivers::gpio::Pin::Pin_12,  mcu::drivers::gpio::Mode::Alternate,  mcu::drivers::gpio::Speed::VeryHigh, mcu::drivers::gpio::Alternative::AF10},
 
       // Encoder
-      {EPinFunction::EncA,      mcu::drivers::gpio::Port::PD,   mcu::drivers::gpio::Pin::Pin_0,   mcu::drivers::gpio::Mode::Alternate,  mcu::drivers::gpio::Alternative::AF15},
-      {EPinFunction::EncB,      mcu::drivers::gpio::Port::PD,   mcu::drivers::gpio::Pin::Pin_1,   mcu::drivers::gpio::Mode::Alternate,  mcu::drivers::gpio::Alternative::AF15},
-      {EPinFunction::EncButton, mcu::drivers::gpio::Port::PD,   mcu::drivers::gpio::Pin::Pin_2,   mcu::drivers::gpio::Mode::Alternate,  mcu::drivers::gpio::Alternative::AF15},
+      {EPinFunction::EncA,      mcu::drivers::gpio::Port::PD,   mcu::drivers::gpio::Pin::Pin_0,   mcu::drivers::gpio::Mode::Input},
+      {EPinFunction::EncB,      mcu::drivers::gpio::Port::PD,   mcu::drivers::gpio::Pin::Pin_1,   mcu::drivers::gpio::Mode::Input},
+      {EPinFunction::EncButton, mcu::drivers::gpio::Port::PD,   mcu::drivers::gpio::Pin::Pin_2,   mcu::drivers::gpio::Mode::Input},
 
       // Debug UART
       {EPinFunction::DebugTx,   mcu::drivers::gpio::Port::PD,   mcu::drivers::gpio::Pin::Pin_5,   mcu::drivers::gpio::Mode::Alternate,  mcu::drivers::gpio::Speed::VeryHigh, mcu::drivers::gpio::Alternative::AF7},
@@ -193,13 +197,47 @@ class CIntegration final {
   static constexpr auto integrationUsb = integration::usb::device::CUsbIntegration(_SystemTime, _Flash);
   static constexpr auto usbDevice = iso::usb::UsbDevice(integrationUsb);
 
+  // FatFs
+  static constexpr fatfs::CFatFs fileSystem{};
+
+  // Encoder
+  static constexpr mcu::drivers::exti::CExtInterrupt<_PinMap[iso::meta_type::const_v<EPinFunction::EncA>], mcu::drivers::exti::ETrigger::Falling>
+      _EncoderA{};
+  static constexpr mcu::drivers::exti::CExtInterrupt<_PinMap[iso::meta_type::const_v<EPinFunction::EncB>], mcu::drivers::exti::ETrigger::Falling>
+      _EncoderB{};
+  static constexpr mcu::drivers::exti::CExtInterrupt<_PinMap[iso::meta_type::const_v<EPinFunction::EncButton>], mcu::drivers::exti::ETrigger::Falling>
+      _EncoderButton{};
+
+  // Real variables
+  static volatile ERotation _Rotation;
+
 public:
   CIntegration();
   void operator()();
 
+  static consteval auto GetFlash() { return _Flash; }
+
   // Interrupt
   inline static void InterruptSystemTick() { _SystemTick.InterruptHandler(); }
   inline static void InterruptUsb() { integrationUsb.InterruptHandler(); }
+
+  inline static void InterruptExti0() {
+    _EncoderA.InterruptHandler();
+    if (_PinMap[iso::meta_type::const_v<EPinFunction::EncB>].Read()) {
+      _Rotation = ERotation::Clockwise;
+    }
+  }
+  inline static void InterruptExti1() {
+    _EncoderB.InterruptHandler();
+    if (_PinMap[iso::meta_type::const_v<EPinFunction::EncA>].Read()) {
+      _Rotation = ERotation::Counterclockwise;
+    }
+  }
+
+  inline static void InterruptExti2() {
+    _EncoderButton.InterruptHandler();
+    _Rotation = ERotation::Enter;
+  }
 };
 
 } // namespace integration

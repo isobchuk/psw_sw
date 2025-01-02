@@ -103,7 +103,6 @@ template <typename TIntegration> class CHandler final {
 
   /*!<-----Standart request functions------->!*/
   bool SetAddress(const SRequest &request) {
-
     _Integration._Timer.Delay(2);
     _Integration._Hardware.Address(static_cast<Type::Byte>(request.wValue));
     _Integration._Hardware.ControlEndpoint().WriteEmpty();

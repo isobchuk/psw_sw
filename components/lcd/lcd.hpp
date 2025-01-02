@@ -150,6 +150,24 @@ public:
       Write(str[i++]);
     }
   }
+
+  inline void SetCursor(const uint8_t line, const uint8_t row) const {
+    uint8_t address = [&line, &row]() {
+      uint8_t addr = 0;
+      if (0 == line) {
+        addr = 0 + row;
+      } else if (1 == line) {
+        addr = 0x40 + row;
+      } else if (2 == line) {
+        addr = 20 + row;
+      } else if (3 == line) {
+        addr = 0x40 + 20 + row;
+      }
+      return addr;
+    }();
+
+    Address(address);
+  }
 };
 
 } // namespace iso::lcd

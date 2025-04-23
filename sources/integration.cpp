@@ -1,8 +1,25 @@
 #include "integration.hpp"
+#include "cryptoIntegration.hpp"
+#include "passwordStorage.hpp"
 
 namespace integration {
 
-CIntegration::CIntegration() {
+enum class EState { Launch, LogIn, Checking, FillBase, ShowRecords };
+
+//#define ISO_DEBUG
+
+#ifdef ISO_DEBUG
+static EState state = EState::Checking;
+static char pinCode[8] = {'1', '8', '0', '2', '2', '0', '1', '2'};
+#else
+static EState state = EState::Launch;
+static char pinCode[8] = {};
+#endif
+
+static uint16_t record;
+static bool firstFrame;
+
+CIntegration::CIntegration() : fileBuffer{}, buffer{}, len(), fileSystem() {
   using namespace iso::meta_type;
   _InterruptController.GlobalEnable();
   //_InterruptController[iso::meta_type::const_v<mcu::drivers::interrupt::Number::TIM7>].Enable();
@@ -33,6 +50,30 @@ CIntegration::CIntegration() {
   _Lcd2004.Init();
   _Lcd2004.Clear();
 
+  //_Crypto.Init();
+
+  if (integration::fatfs::EError::NoError == fileSystem.Init()) {
+    const auto bytes = fileSystem.Read(fileBuffer, iso::meta_type::const_v<1024U>);
+    if (std::size_t(-1) == bytes) {
+      // Error handling
+    }
+    len = bytes + (bytes % 16);
+  }
+
+#ifdef ISO_DEBUG
+  state = EState::Checking;
+  pinCode[0] = '1';
+  pinCode[1] = '8';
+  pinCode[2] = '0';
+  pinCode[3] = '2';
+  pinCode[4] = '2';
+  pinCode[5] = '0';
+  pinCode[6] = '1';
+  pinCode[7] = '2';
+#endif
+
+record = 1U;
+firstFrame = true;
   //_Lcd2004.Address(uint8_t(0U));
   //_Lcd2004.String("Test string!");
 
@@ -44,11 +85,18 @@ CIntegration::CIntegration() {
    }*/
 }
 
+
+
 void CIntegration::operator()() {
 
-  enum class EState { Launch, LogIn, Checking };
-  static EState state = EState::Launch;
-  [[maybe_unused]] static char pinCode[8] = {};
+  constexpr auto PERIOD_HEART_BEAT = 1000U;
+  static Timeout timeoutHeartBeat;
+
+  _SystemTime.Start(timeoutHeartBeat);
+  if (_SystemTime.Check(timeoutHeartBeat, PERIOD_HEART_BEAT)) {
+    HeartBeat();
+  }
+
   if (state == EState::Launch) {
     _Lcd2004.SetCursor(0, 6);
     _Lcd2004.String("PIN CODE");
@@ -72,6 +120,8 @@ void CIntegration::operator()() {
           pinCode[row++] = char(digit + 0x30);
           digit = 0;
         } else {
+          pinCode[row] = char(digit + 0x30);
+          digit = 0;
           state = EState::Checking;
         }
       }
@@ -79,36 +129,47 @@ void CIntegration::operator()() {
       char symbol[2] = {char(digit + 0x30), 0};
       _Lcd2004.String(symbol);
       _Rotation = ERotation::None;
-    } else if (state == EState::Checking) {
+    }
+  } else if (state == EState::Checking) {
+    integration::crypto::CCryptoIntegration _Crypto(pinCode);
+    _Crypto.Decrypt(fileBuffer, buffer, len);
+
+    //_Crypto.KeySetup(sha256);
+    //_Crypto.Decrypt(fileBuffer, buffer, len);
+    state = EState::FillBase;
+  } else if (state == EState::FillBase) {
+    static integration::pss::CPasswordStorage pss(buffer, len);
+    if (pss.IsValid()) {
+      if (ERotation::Clockwise == _Rotation) {
+        if (record <= pss.GetNumber() + 1) {
+          record++;
+        }
+      } else if (ERotation::Counterclockwise == _Rotation) {
+        if (record > 1U) {
+          record--;
+        }
+      }
+
+      if (_Rotation != ERotation::None || firstFrame) {
+        _Rotation = ERotation::None;
+        firstFrame = false;
+        const auto &frame = pss.GetFrame(record);
+        
+        _Lcd2004.Clear();
+        _Lcd2004.SetCursor(0, 0);
+        _Lcd2004.String(frame[0]);
+        _Lcd2004.SetCursor(1, 0);
+        _Lcd2004.String(frame[1]);
+        _Lcd2004.SetCursor(2, 0);
+        _Lcd2004.String(frame[2]);
+
+      }
+    } else {
+      state = EState::Launch;
     }
   }
 
   usbDevice();
-  // static Timeout timeoutLed;
-  /*if (ERotation::None != _Rotation) {
-    static std::unsigned_integral auto counter = 0UL;
-
-    if (ERotation::Clockwise == _Rotation) {
-      if (counter < 3) {
-        counter++;
-      }
-    } else if (ERotation::Counterclockwise == _Rotation) {
-      if (counter > 0) {
-        counter--;
-      }
-    }
-
-    _Lcd2004.Clear();
-    _Lcd2004.SetCursor(static_cast<uint8_t>(counter), 0);
-    _Lcd2004.String("Test string!");
-    _Rotation = ERotation::None;
-  }
-
-   _SystemTime.Start(timeoutLed);
-  if (_SystemTime.Check(timeoutLed, 1000U)) {
-    debug.trace(iso::format::string<"Just a tick">);
-  }
-  */
 }
 
 volatile CIntegration::ERotation CIntegration::_Rotation;

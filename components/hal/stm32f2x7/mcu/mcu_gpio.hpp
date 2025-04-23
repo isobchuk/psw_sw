@@ -247,6 +247,7 @@ class CGpioPinMap final {
 
     constexpr auto moderPA = GetMode(iso::meta_type::const_v<Port::PA>, defaultValue);
     if constexpr (moderPA) {
+      GPIOA->MODER &= GPIO_MODER::MODER[constants::NUM_15](constants::NUM_1); // Hack, should be modified
       GPIOA->MODER |= moderPA;
     }
     constexpr auto moderPB = GetMode(iso::meta_type::const_v<Port::PB>, defaultValue);

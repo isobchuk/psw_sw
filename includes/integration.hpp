@@ -13,8 +13,10 @@
 #include "mcu_systick.hpp"
 #include "mcu_tim_base.hpp"
 #include "mcu_usb_otg_device.hpp"
+#include "mcu_cryp.hpp"
 #include "mx25.hpp"
 #include "system_time.hpp"
+#include "led.hpp"
 
 extern "C" {
 #include "SEGGER_RTT.h"
@@ -41,6 +43,8 @@ class CIntegration final {
     UsbVBus,
     UsbDM,
     UsbDP,
+
+    Led,
 
     EncA,
     EncB,
@@ -81,6 +85,9 @@ class CIntegration final {
       {EPinFunction::UsbDM,     mcu::drivers::gpio::Port::PA,   mcu::drivers::gpio::Pin::Pin_11,  mcu::drivers::gpio::Mode::Alternate,  mcu::drivers::gpio::Speed::VeryHigh, mcu::drivers::gpio::Alternative::AF10},
       {EPinFunction::UsbDP,     mcu::drivers::gpio::Port::PA,   mcu::drivers::gpio::Pin::Pin_12,  mcu::drivers::gpio::Mode::Alternate,  mcu::drivers::gpio::Speed::VeryHigh, mcu::drivers::gpio::Alternative::AF10},
 
+      // Led
+      {EPinFunction::Led,       mcu::drivers::gpio::Port::PA,   mcu::drivers::gpio::Pin::Pin_15,  mcu::drivers::gpio::Mode::Output},
+
       // Encoder
       {EPinFunction::EncA,      mcu::drivers::gpio::Port::PD,   mcu::drivers::gpio::Pin::Pin_0,   mcu::drivers::gpio::Mode::Input},
       {EPinFunction::EncB,      mcu::drivers::gpio::Port::PD,   mcu::drivers::gpio::Pin::Pin_1,   mcu::drivers::gpio::Mode::Input},
@@ -102,6 +109,9 @@ class CIntegration final {
   // clang-format on
   static_assert((static_cast<unsigned>(EPinFunction::Num) == (sizeof(_PinTable) / sizeof(_PinTable[0]))), "All pin function should be used!");
   static constexpr integration::mcu::drivers::gpio::CGpioPinMap<_PinTable> _PinMap{};
+
+  // Led
+  static constexpr hardware::led::Led _Led{_PinMap[iso::meta_type::const_v<EPinFunction::Led>]};
 
   // DMA Table
   enum class EDmaFunctions : unsigned { FlashRX, FlashTX };
@@ -198,7 +208,10 @@ class CIntegration final {
   static constexpr auto usbDevice = iso::usb::UsbDevice(integrationUsb);
 
   // FatFs
-  static constexpr fatfs::CFatFs fileSystem{};
+  char fileBuffer[4096]; // expected max size
+  char buffer[sizeof(fileBuffer)];
+  std::size_t len;
+  fatfs::CFatFs fileSystem;
 
   // Encoder
   static constexpr mcu::drivers::exti::CExtInterrupt<_PinMap[iso::meta_type::const_v<EPinFunction::EncA>], mcu::drivers::exti::ETrigger::Falling>
@@ -208,8 +221,16 @@ class CIntegration final {
   static constexpr mcu::drivers::exti::CExtInterrupt<_PinMap[iso::meta_type::const_v<EPinFunction::EncButton>], mcu::drivers::exti::ETrigger::Falling>
       _EncoderButton{};
 
+  // Crypto AES
+  static constexpr mcu::drivers::cryp::aes::CCrypto _Crypto{iso::meta_type::const_v<mcu::drivers::cryp::aes::EMode::ECB>, iso::meta_type::const_v<mcu::drivers::cryp::aes::EKeySize::B256>};
+
   // Real variables
   static volatile ERotation _Rotation;
+
+  // Tasks
+  inline void HeartBeat() const {
+    _Led.Change();
+  }
 
 public:
   CIntegration();

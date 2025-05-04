@@ -62,16 +62,17 @@ SECTIONS {
     KEEP(*(SORT(.dtors.*)))
     KEEP(*crtend.o(.dtors))
 
+
+  } > flash
+
+  /*!< Exceptions >!*/
+  .ARM.extab : {
+    *(.ARM.extab* .gnu.linkonce.armextab.*)
     . = ALIGN(4);
     efixed = .;
   } > flash
 
-  /*!< Exceptions >!*/
-  /*.ARM.extab : {
-    *(.ARM.extab* .gnu.linkonce.armextab.*)
-  } > flash
-
-  .ARM.exidx : {
+  /*.ARM.exidx : {
     PROVIDE(__exidx_start = .);
     *(.ARM.exidx* .gnu.linkonce.armexidx.*)
     PROVIDE(__exidx_end = .);

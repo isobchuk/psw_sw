@@ -165,7 +165,7 @@ template <interface TEndpoint, descriptor TDescriptor> class CScsi<TEndpoint, TD
 
       const auto packetSize = ep.SizePacketMax();
       const auto packetNum = _SectorSize / packetSize;
-      for (uint8_t j = 0; j < packetNum; j++) {
+      for (uint16_t j = 0; j < packetNum; j++) {
         const uint8_t(&buffer)[packetSize] = reinterpret_cast<uint8_t(&)[packetSize]>(sector[j * packetSize]);
         ep.Transmit(buffer, packetSize);
       }
@@ -184,7 +184,7 @@ template <interface TEndpoint, descriptor TDescriptor> class CScsi<TEndpoint, TD
     for (unsigned k = 0U; k < size; k++) {
       const auto packetSize = ep.SizePacketMax();
       const auto packetNum = _SectorSize / packetSize;
-      for (uint8_t j = 0; j < packetNum; j++) {
+      for (uint16_t j = 0; j < packetNum; j++) {
         uint8_t(&buffer)[packetSize] = reinterpret_cast<uint8_t(&)[packetSize]>(sector[j * packetSize]);
         while (!ep.Receive(buffer, packetSize)) {
         }

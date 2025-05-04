@@ -102,7 +102,7 @@ public:
     _Interface.Delay(const_v<50_uS>);
 
     InitCommand(const_v<uint8_t(0b0000U)>);
-    InitCommand(const_v<uint8_t(0b1111U)>);
+    InitCommand(const_v<uint8_t(0b1100U)>);
     _Interface.Delay(const_v<50_uS>);
 
     InitCommand(const_v<uint8_t(0b0000U)>);
@@ -133,6 +133,11 @@ public:
       Enable();
     }
   }
+  template <iso::meta_type::const_value_of_type<bool> State>
+  inline void Cursor(const State) const {
+    using namespace iso::meta_type;
+    Write(uint8_t(0b00001100U | (State::value ? 0b11U : 0b00U)), const_v<false>);
+  }
 
   inline void Address(const uint8_t address) const {
     using namespace iso::meta_type;
@@ -146,7 +151,7 @@ public:
 
   template <const unsigned N> inline void String(const char (&str)[N]) const {
     unsigned i = 0;
-    while ('\0' != str[i]) {
+    while ('\0' != str[i] && i < 20) {
       Write(str[i++]);
     }
   }

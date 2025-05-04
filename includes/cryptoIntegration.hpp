@@ -29,7 +29,7 @@ class CCryptoIntegration final {
   BYTE key[32];
 
 public:
-  CCryptoIntegration(const char (&pin)[8]) : key_schedule{} {
+  CCryptoIntegration(const char (&pin)[8]) : key_schedule{}, key{} {
     // Calculate key
     SHA256_CTX ctx;
     sha256_init(&ctx);
@@ -45,12 +45,6 @@ public:
         aes_encrypt(reinterpret_cast<const unsigned char *>(&input[j * PORTION_SIZE]), reinterpret_cast<unsigned char *>(&output[j * PORTION_SIZE]),
                     key_schedule, 256);
       }
-
-    for (unsigned j = 0U; j < len; j += sizeof(uint32_t)) {
-        *reinterpret_cast<uint32_t *>(&output[j]) = static_cast<uint32_t>(output[j + 0]) << 24U |
-                                                    static_cast<uint32_t>(output[j + 1]) << 16U |
-                                                    static_cast<uint32_t>(output[j + 2]) << 8U | static_cast<uint32_t>(output[j + 3]);
-      }
     }
   }
 
@@ -60,12 +54,6 @@ public:
         aes_decrypt(reinterpret_cast<const unsigned char *>(&input[j * PORTION_SIZE]), reinterpret_cast<unsigned char *>(&output[j * PORTION_SIZE]),
                     key_schedule, 256);
       }
-
-      /*for (unsigned j = 0U; j < len; j += sizeof(uint32_t)) {
-        *reinterpret_cast<uint32_t *>(&output[j]) = static_cast<uint32_t>(output[j + 0]) << 24U |
-                                                    static_cast<uint32_t>(output[j + 1]) << 16U |
-                                                    static_cast<uint32_t>(output[j + 2]) << 8U | static_cast<uint32_t>(output[j + 3]);
-      }*/
     }
   }
 };

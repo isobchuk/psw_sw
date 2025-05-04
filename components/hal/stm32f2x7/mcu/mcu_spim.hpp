@@ -71,7 +71,6 @@ public:
 
     _ChipSelect.Write(const_v<true>);
 
-    SPI->CR2 |= (SPI_CR2::TXDMAEN | SPI_CR2::RXDMAEN);
     SPI->CR1 |= SPI_CR1::SSM | SPI_CR1::SSI | SPI_CR1::MSTR | SPI_CR1::SPE;
   }
 
@@ -83,24 +82,27 @@ public:
     using namespace iso::meta_type;
 
     volatile uint8_t bufferRx[sizeof(buffer._Tx)] = {};
-
+    while(SPI->SR & SPI_SR::BSY) {}
     _ChipSelect.Write(const_v<false>);
 
     _DmaRx.Address(const_v<EAddressRegion::Memory0>, bufferRx);
     _DmaRx.Number(const_v<uint32_t(sizeof(bufferRx))>);
+    _DmaRx.Enable();
+    while (!(_DmaRx.IsEnabled())) {}
 
     _DmaTx.Address(const_v<EAddressRegion::Memory0>, buffer._Tx);
     _DmaTx.Number(const_v<uint32_t(sizeof(buffer._Tx))>);
-
-    _DmaRx.Enable();
     _DmaTx.Enable();
+    while (!(_DmaTx.IsEnabled())) {}
+    SPI->CR2 |= (SPI_CR2::TXDMAEN | SPI_CR2::RXDMAEN);
 
-    while (!_DmaRx.InterruptStatus(const_v<EInterruptReason::TransferComplete>)) {
+    while (!(_DmaRx.InterruptStatus(const_v<EInterruptReason::TransferComplete>) && _DmaTx.InterruptStatus(const_v<EInterruptReason::TransferComplete>))) {
     }
     _DmaRx.InterruptClear(const_v<EInterruptReason::TransferComplete>);
-    while (!_DmaTx.InterruptStatus(const_v<EInterruptReason::TransferComplete>)) {
-    }
     _DmaTx.InterruptClear(const_v<EInterruptReason::TransferComplete>);
+    _DmaRx.InterruptClear(const_v<EInterruptReason::HalfTransfer>);
+    _DmaTx.InterruptClear(const_v<EInterruptReason::HalfTransfer>);
+    SPI->CR2 &= (SPI_CR2::TXDMAEN | SPI_CR2::RXDMAEN);
     _DmaRx.Disable();
     _DmaTx.Disable();
 

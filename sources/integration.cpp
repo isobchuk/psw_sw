@@ -4,37 +4,15 @@
 
 namespace integration {
 
-enum class EState { Launch, LogIn, Checking, FillBase, ShowRecords };
-
 //#define ISO_DEBUG
-
-#ifdef ISO_DEBUG
-static EState state = EState::Checking;
-static char pinCode[8] = {'1', '8', '0', '2', '2', '0', '1', '2'};
-#else
-static EState state = EState::Launch;
-static char pinCode[8] = {};
-#endif
-
-static uint16_t record;
-static bool firstFrame;
 
 CIntegration::CIntegration() : fileBuffer{}, buffer{}, len(), fileSystem() {
   using namespace iso::meta_type;
-  _InterruptController.GlobalEnable();
-  //_InterruptController[iso::meta_type::const_v<mcu::drivers::interrupt::Number::TIM7>].Enable();
-  _Clock.Init();
-  _PinMap.Init();
-  _DmaController.Init();
-  _SystemTick.Init();
+
+  hardware::Initialize();
+
   _TerminalOutput.Init();
-  _Spi.Init();
-  _EncoderA.Init();
-  _EncoderB.Init();
-  _EncoderButton.Init();
-  _InterruptController[const_v<mcu::drivers::interrupt::Number::EXTI0>].Enable();
-  _InterruptController[const_v<mcu::drivers::interrupt::Number::EXTI1>].Enable();
-  _InterruptController[const_v<mcu::drivers::interrupt::Number::EXTI2>].Enable();
+  _Encoder.Init();
 
   const bool result = _Flash.Connect();
   if (result) {
@@ -43,14 +21,9 @@ CIntegration::CIntegration() : fileBuffer{}, buffer{}, len(), fileSystem() {
     _Flash.GetStatus();
   }
 
-  _PinMap[const_v<EPinFunction::UsbEnable>].Write(const_v<false>);
-  _InterruptController[const_v<mcu::drivers::interrupt::Number::OTG_FS>].Enable();
   usbDevice.Init();
 
   _Lcd2004.Init();
-  _Lcd2004.Clear();
-
-  //_Crypto.Init();
 
   if (integration::fatfs::EError::NoError == fileSystem.Init()) {
     const auto bytes = fileSystem.Read(fileBuffer, iso::meta_type::const_v<1024U>);
@@ -60,22 +33,8 @@ CIntegration::CIntegration() : fileBuffer{}, buffer{}, len(), fileSystem() {
     len = bytes + (bytes % 16);
   }
 
-#ifdef ISO_DEBUG
-  state = EState::Checking;
-  pinCode[0] = '1';
-  pinCode[1] = '8';
-  pinCode[2] = '0';
-  pinCode[3] = '2';
-  pinCode[4] = '2';
-  pinCode[5] = '0';
-  pinCode[6] = '1';
-  pinCode[7] = '2';
-#endif
-
-record = 1U;
-firstFrame = true;
-  //_Lcd2004.Address(uint8_t(0U));
-  //_Lcd2004.String("Test string!");
+  // record = 1U;
+  // firstFrame = true;
 
   /* if (fatfs::EError::NoError == fileSystem.Init()) {
      debug.message(iso::format::string<PROJECT_NAME>);
@@ -85,19 +44,41 @@ firstFrame = true;
    }*/
 }
 
-
-
 void CIntegration::operator()() {
+  using namespace encoder;
 
+  HeartBeat();
+  Application();
+  Usb();
+}
+
+void CIntegration::HeartBeat() const {
   constexpr auto PERIOD_HEART_BEAT = 1000U;
-  static Timeout timeoutHeartBeat;
+  static hardware::Timeout timeoutHeartBeat;
 
-  _SystemTime.Start(timeoutHeartBeat);
-  if (_SystemTime.Check(timeoutHeartBeat, PERIOD_HEART_BEAT)) {
-    HeartBeat();
+  hardware::_SystemTime.Start(timeoutHeartBeat);
+  if (hardware::_SystemTime.Check(timeoutHeartBeat, PERIOD_HEART_BEAT)) {
+    _Led.Change();
   }
+}
+
+void CIntegration::Application() {
+  using namespace encoder;
+
+  enum class EState { Launch, LogIn, Checking, FillBase, ShowRecords };
+
+#ifdef ISO_DEBUG
+  static EState state = EState::Checking;
+  static char pinCode[8] = {'1', '9', '4', '0', '1', '8', '0', '2'};
+#else
+  static EState state = EState::Launch;
+  static char pinCode[8] = {};
+#endif
+  static uint16_t record = 1;
+  static bool firstFrame = true;
 
   if (state == EState::Launch) {
+    _Lcd2004.Clear();
     _Lcd2004.SetCursor(0, 6);
     _Lcd2004.String("PIN CODE");
     _Lcd2004.SetCursor(1, 6);
@@ -106,55 +87,64 @@ void CIntegration::operator()() {
   } else if (state == EState::LogIn) {
     static uint8_t digit;
     static uint8_t row;
-    if (ERotation::None != _Rotation) {
-      if (ERotation::Clockwise == _Rotation) {
+    if (ERotation::None != _Encoder.GetRotation()) {
+      if (ERotation::Clockwise == _Encoder.GetRotation()) {
         if (digit < 9) {
           digit++;
+        } else {
+          digit = 0;
         }
-      } else if (ERotation::Counterclockwise == _Rotation) {
+      } else if (ERotation::Counterclockwise == _Encoder.GetRotation()) {
         if (digit > 0) {
           digit--;
+        } else {
+          digit = 9;
         }
-      } else if (ERotation::Enter == _Rotation) {
+      } else if (ERotation::Enter == _Encoder.GetRotation()) {
         if (row < (sizeof(pinCode) - 1)) {
           pinCode[row++] = char(digit + 0x30);
           digit = 0;
         } else {
           pinCode[row] = char(digit + 0x30);
           digit = 0;
+          row = 0;
           state = EState::Checking;
         }
       }
       _Lcd2004.SetCursor(1, row + 6);
       char symbol[2] = {char(digit + 0x30), 0};
       _Lcd2004.String(symbol);
-      _Rotation = ERotation::None;
+      _Encoder.ClearRotation();
     }
   } else if (state == EState::Checking) {
     integration::crypto::CCryptoIntegration _Crypto(pinCode);
     _Crypto.Decrypt(fileBuffer, buffer, len);
-
-    //_Crypto.KeySetup(sha256);
-    //_Crypto.Decrypt(fileBuffer, buffer, len);
+    firstFrame = true;
+    record = 1U;
     state = EState::FillBase;
   } else if (state == EState::FillBase) {
-    static integration::pss::CPasswordStorage pss(buffer, len);
+    integration::pss::CPasswordStorage pss(buffer, len);    
     if (pss.IsValid()) {
-      if (ERotation::Clockwise == _Rotation) {
-        if (record <= pss.GetNumber() + 1) {
+      const auto number = pss.GetNumber();
+      if (ERotation::Clockwise == _Encoder.GetRotation()) {
+        if (record < number) {
           record++;
+        } else {
+          record = 1U;
         }
-      } else if (ERotation::Counterclockwise == _Rotation) {
+      } else if (ERotation::Counterclockwise == _Encoder.GetRotation()) {
         if (record > 1U) {
           record--;
+        } else {
+          record = uint16_t(number);
         }
       }
 
-      if (_Rotation != ERotation::None || firstFrame) {
-        _Rotation = ERotation::None;
+      if (_Encoder.GetRotation() != ERotation::None || firstFrame) {
+        _Encoder.ClearRotation();
         firstFrame = false;
         const auto &frame = pss.GetFrame(record);
-        
+
         _Lcd2004.Clear();
         _Lcd2004.SetCursor(0, 0);
         _Lcd2004.String(frame[0]);
@@ -162,17 +152,46 @@ void CIntegration::operator()() {
         _Lcd2004.String(frame[1]);
         _Lcd2004.SetCursor(2, 0);
         _Lcd2004.String(frame[2]);
+      }
 
+      
+      constexpr auto TIMEOUT = 1000U;
+      static hardware::Timeout timeout;
+
+      hardware::_SystemTime.Start(timeout);
+      if (hardware::_SystemTime.Check(timeout, TIMEOUT)) {
+        const auto &frame = pss.GetFrame(record, true);
+
+        _Lcd2004.Clear();
+        _Lcd2004.SetCursor(0, 0);
+        _Lcd2004.String(frame[0]);
+        _Lcd2004.SetCursor(1, 0);
+        _Lcd2004.String(frame[1]);
+        _Lcd2004.SetCursor(2, 0);
+        _Lcd2004.String(frame[2]);
       }
     } else {
-      state = EState::Launch;
+      static bool wait;
+      if (!wait) {
+        _Lcd2004.Clear();
+        _Lcd2004.String("   INCORRECT PIN   ");
+      }
+
+      constexpr auto TIMEOUT = 3000U;
+      static hardware::Timeout timeout;
+
+      hardware::_SystemTime.Start(timeout);
+      if (hardware::_SystemTime.Check(timeout, TIMEOUT)) {
+        wait = false;
+        state = EState::Launch;
+      } else {
+        wait = true;
+      }
     }
   }
-
-  usbDevice();
 }
 
-volatile CIntegration::ERotation CIntegration::_Rotation;
+void CIntegration::Usb() const { usbDevice(); }
 
 } // namespace integration
 

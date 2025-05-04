@@ -257,6 +257,12 @@ public:
     DMA->SCR[STREAM] |= DMA_SCR::EN;
   }
 
+  [[nodiscard ]]inline bool IsEnabled() const {
+    using namespace cpp_register;
+    using namespace stm32f217::registers::dma;
+    return DMA->SCR[STREAM] & DMA_SCR::EN;
+  }
+
   inline void Disable() const {
     using namespace cpp_register;
     using namespace stm32f217::registers::dma;
